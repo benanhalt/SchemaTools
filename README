@@ -1,0 +1,3 @@
+Some python scripts for parsing and visualizing mysql schemas and importing
+mysql data into couchdb.
+

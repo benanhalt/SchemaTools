@@ -3,8 +3,6 @@ import MySQLdb
 from MySQLdb.constants import FIELD_TYPE
 from  MySQLdb.converters import conversions as default_conv
 
-from parse_schema import parse_schema
-
 BATCH_SIZE = 1000
 RESERVED_COLUMN_NAMES = ("_id", "_rev", "type")
 
@@ -25,6 +23,10 @@ def convert(mysql, couch, schema):
         load_table(cursor, table, couch)
 
 def load_table(cursor, table, couch):
+    if not table.include:
+        print "skipping table: %s" % table.name
+        return
+
     print "loading table: %s" % table.name
     cursor.execute("SELECT * FROM %s" % table.name)
 
@@ -54,6 +56,8 @@ def load_value(doc, col, row):
 if __name__ == "__main__":
     import getopt
     import sys
+    import json
+    from jsonschema import json2schema
 
     optlist, args = getopt.getopt(sys.argv[1:], 'u:p:')
     options  = dict(optlist)
@@ -63,7 +67,7 @@ if __name__ == "__main__":
     couchdbname = args[1]
     schemafile = args[2]
 
-    schema = parse_schema(open(schemafile))
+    schema = json2schema(json.load(open(schemafile)))
 
     mysql = MySQLdb.connect(user=username, passwd=password,
                             db=mysqldbname, charset = "utf8",

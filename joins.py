@@ -1,4 +1,3 @@
-from parse_schema import parse_schema
 
 def compute_view(schema):
     for t in schema.tables.values():
@@ -6,7 +5,10 @@ def compute_view(schema):
         t.rh_emits = set()
 
     for t in schema.tables.values():
+        if not t.include: continue
         for r in t.relationships.values():
+            rtable = schema.tables[r.table]
+            if not rtable.include: continue
             key = "%s.%s" % (r.table, r.remote_column)
             t.lh_emits.add((r.local_column, key))
             schema.tables[r.table].rh_emits.add(r.remote_column)
@@ -37,7 +39,9 @@ def compute_view(schema):
 if __name__ == '__main__':
     import sys
     import json
-    schema = parse_schema(sys.stdin)
+    from jsonschema import json2schema
+
+    schema = json2schema(json.load(sys.stdin))
     view = compute_view(schema)
     print json.dumps({"language":"javascript",
                       "views":

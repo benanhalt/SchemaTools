@@ -1,0 +1,2 @@
+text = object()
+date = object()

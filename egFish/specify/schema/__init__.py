@@ -9,32 +9,54 @@ class Field:
         self.args = args
         self.kwargs = kwargs
 
-    def to_sqlalchemy(self, name):
+    def to_sqlalchemy(self, name, *args, **kwargs):
         return sqlalchemy.Column(
-            name, self.sqlalchemy_type,
-            nullable=(field_options.required not in self.args))
+            name, self.sqlalchemy_type, *args,
+            nullable=(field_options.required not in self.args),
+            **kwargs)
+
+    def __repr__(self):
+        args = list(self.args)
+        args.extend("%s=%s" % (k, v) for k, v in self.kwargs.items())
+
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ', '.join(args)
+            )
 
 class Link(Field):
-    sqlalchemy_type = UUIDType
+    sqlalchemy_type = None
+
+    def to_sqlalchemy(self, *args, **kwargs):
+        fk = '.'.join((get_schema(self.target), self.target.get_name(), 'uuid'))
+        return super().to_sqlalchemy(
+            *(args +  (sqlalchemy.ForeignKey(fk), )),
+            **kwargs)
 
     def __init__(self, target, *args, **kwargs):
-        fk = '.'.join((get_schema(target), target.get_name(), 'uuid'))
-        self.args = args + (sqlalchemy.ForeignKey(fk), )
-        self.kwargs = kwargs
+        self.target = target
+        super().__init__(*args, **kwargs)
 
 def is_field(obj):
     return isinstance(obj, Field)
 
-def is_entity(obj):
-    return isinstance(obj, type) and issubclass(obj, Entity)
+def is_record(obj):
+    return isinstance(obj, type) and issubclass(obj, Record) \
+           and obj not in (Record, TreeRecord)
 
-def get_schema(entity):
-    return entity.__module__
+def get_schema(record):
+    return record.__module__
 
-class Entity(Ordered):
+class Record(Ordered):
     @classmethod
     def get_name(cls):
         return cls.__name__
+
+    @classmethod
+    def base_columns(cls):
+        return [
+            sqlalchemy.Column('uuid', UUIDType, primary_key=True)
+            ]
 
     @classmethod
     def to_sqlalchemy(cls, metadata, parent=None):
@@ -42,23 +64,21 @@ class Entity(Ordered):
                   if is_field(getattr(cls, field))]
 
         children = [field for field in cls._fields
-                    if is_entity(getattr(cls, field))]
-
-        if len(fields) + len(children) < 1:
-            return
+                    if is_record(getattr(cls, field))]
 
         args = [cls.get_name(), metadata]
         args.extend(getattr(cls, field).to_sqlalchemy(field)
                     for field in fields)
+        args.extend(cls.base_columns())
         yield sqlalchemy.Table(*args, schema=get_schema(cls))
         yield from (getattr(cls, child).to_sqlalchemy(metadata, cls)
                     for child in children)
 
-class TreeEntity(Entity):
+class TreeRecord(Record):
     pass
 
 def Tree(ranks_for_tree):
-    class TreeClass(TreeEntity):
+    class TreeClass(TreeRecord):
         try:
             _ranks = ranks_for_tree.split()
         except AttributeError:
@@ -67,5 +87,16 @@ def Tree(ranks_for_tree):
 
 def schema_to_sqlalchemy(metadata, schema_module):
     for attr in schema_module.__dict__.values():
-        if is_entity(attr):
+        if is_record(attr):
             yield from attr.to_sqlalchemy(metadata)
+
+def create_schema(engine, metadata, schema_module):
+    engine.execute(
+        sqlalchemy.schema.DropSchema(schema_module.__name__,
+                                     cascade=True))
+    engine.execute(
+        sqlalchemy.schema.CreateSchema(schema_module.__name__))
+
+    for table in schema_to_sqlalchemy(metadata, schema_module):
+        pass
+    metadata.create_all(engine)

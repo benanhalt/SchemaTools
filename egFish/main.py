@@ -1,8 +1,13 @@
 import sqlalchemy
 
-from specify.schema import schema_to_sqlalchemy
+from specify.schema import create_schema
 import kufish_schema
 
-metadata = sqlalchemy.MetaData()
+engine = sqlalchemy.create_engine(
+    'postgresql+pypostgresql://master:master@localhost:5433/specify_future',
+    echo=True)
 
-print(metadata.create_all())
+metadata = sqlalchemy.MetaData()
+create_schema(engine, metadata, kufish_schema)
+
+

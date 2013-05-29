@@ -7,6 +7,8 @@ def is_field(obj):
 def is_record(obj):
     return isinstance(obj, type) and issubclass(obj, Record)
 
+def is_tree(obj):
+    return is_record(obj) and issubclass(obj, TreeRecord)
 
 class Field(sql_mixin.Field):
     _record = None
@@ -67,10 +69,13 @@ class Schema(sql_mixin.Schema, metaclass=SchemaMeta):
     def get_name(cls):
         return cls.__name__
 
+class TreeRecord(sql_mixin.TreeRecord, Record):
+    pass
+
 def make_tree(ranks_for_tree):
-    class TreeClass(Record):
+    class Tree(TreeRecord):
         try:
             _ranks = ranks_for_tree.split()
         except AttributeError:
             _ranks = ranks_for_tree
-    return TreeClass
+    return Tree

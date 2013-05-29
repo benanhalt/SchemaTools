@@ -1,13 +1,16 @@
 import sqlalchemy
 
-from specify.schema import create_schema
-import kufish_schema
+from kufish_schema import KUFish, KUFishVoucher, KUFishTissue
 
 engine = sqlalchemy.create_engine(
     'postgresql+pypostgresql://master:master@localhost:5433/specify_future',
     echo=True)
 
 metadata = sqlalchemy.MetaData()
-create_schema(engine, metadata, kufish_schema)
+KUFish.create(engine, metadata)
+KUFishVoucher.create(engine, metadata)
+KUFishTissue.create(engine, metadata)
+metadata.create_all(engine)
+
 
 

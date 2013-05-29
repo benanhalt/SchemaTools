@@ -1,2 +1,3 @@
 
-
+VoucherPrepType = object()
+TissuePrepType = object()

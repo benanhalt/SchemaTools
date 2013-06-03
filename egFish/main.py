@@ -1,16 +1,29 @@
 import sqlalchemy
 
-from kufish_schema import KUFish, KUFishVoucher, KUFishTissue
+from specify.schema import to_sqlalchemy, conversion
+
+import kufish_schema
+import kufish_conversion
 
 engine = sqlalchemy.create_engine(
-    'postgresql+pypostgresql://master:master@localhost:5433/specify_future',
-    echo=True)
+    'postgresql+pypostgresql://master:master@localhost:5435/specify_future',
+    echo=False)
 
-metadata = sqlalchemy.MetaData()
-KUFish.create(engine, metadata)
-KUFishVoucher.create(engine, metadata)
-KUFishTissue.create(engine, metadata)
-metadata.create_all(engine)
+mysql_engine = sqlalchemy.create_engine(
+    'mysql+pymysql://Master:Master@localhost/ku_fish_tissue_201302_django15',
+    echo=False)
+
+metadata = sqlalchemy.MetaData(bind=engine)
+schemas = to_sqlalchemy.process_schema_module(metadata, kufish_schema)
+to_sqlalchemy.create_schemas(engine, metadata, schemas)
+
+mysql_metadata = sqlalchemy.MetaData(bind=mysql_engine)
+conversion.reflect_database(mysql_metadata, kufish_conversion)
+# id_map = conversion.define_id_map_table(metadata)
 
 
+# id_map.drop(checkfirst=True)
+# id_map.create()
+# conversion.populate_id_map(mysql_metadata, id_map)
 
+conversion.do_conversion(mysql_metadata, metadata, kufish_conversion, schemas)

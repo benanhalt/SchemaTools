@@ -10,6 +10,9 @@ def is_record(obj):
 def is_tree(obj):
     return is_record(obj) and issubclass(obj, TreeRecord)
 
+def is_schema(obj):
+    return isinstance(obj, type) and issubclass(obj, Schema)
+
 class Field(sql_mixin.Field):
     _record = None
 
@@ -19,11 +22,6 @@ class Field(sql_mixin.Field):
 
     def get_name(self):
         return self._name
-
-class Link(sql_mixin.Link, Field):
-    def __init__(self, target, *args, **kwargs):
-        self.target = target
-        super().__init__(*args, **kwargs)
 
 class RecordMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
@@ -56,10 +54,11 @@ class Record(sql_mixin.Record, metaclass=RecordMeta):
     def get_name(cls):
         return cls.__name__
 
-class SchemaMeta(type):
+class SchemaMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
-        schema = type.__new__(meta, name, bases, clsdict)
-        schema._records = [v for v in clsdict.values() if is_record(v)]
+        schema = super().__new__(meta, name, bases, clsdict)
+        values = [getattr(schema, key) for key in schema._keys]
+        schema._records = [v for v in values if is_record(v)]
         for record in schema._records:
             record._schema = schema
         return schema

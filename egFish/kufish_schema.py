@@ -1,7 +1,9 @@
 
-from specify.schema.base import Record, Schema, make_tree
+from specify.schema.base import Record, make_schema, make_tree
 from specify.schema.fields import Boolean, Text, Integer, Date, Link, required
 import formatters, vocabularies
+
+Schema = make_schema()
 
 class KUFish(Schema):
 

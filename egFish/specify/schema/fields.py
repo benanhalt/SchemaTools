@@ -1,18 +1,18 @@
-from .base import Field, sql_mixin
+from .base import Field
 
-class Text(sql_mixin.Text, Field):
+class Text(Field):
     pass
 
-class Date(sql_mixin.Date, Field):
+class Date(Field):
     pass
 
-class Integer(sql_mixin.Integer, Field):
+class Integer(Field):
     pass
 
-class Boolean(sql_mixin.Boolean, Field):
+class Boolean(Field):
     pass
 
-class Link(sql_mixin.Link, Field):
+class Link(Field):
     def __init__(self, target, *args, **kwargs):
         self.target = target
         super().__init__(*args, **kwargs)

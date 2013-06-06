@@ -1,9 +1,9 @@
-
-from specify.schema.base import Record, make_schema, make_tree
+from specify.schema.base import Record, SchemaFamily, make_tree
 from specify.schema.fields import Boolean, Text, Integer, Date, Link, required
 import formatters, vocabularies
 
-Schema = make_schema()
+schema_family = SchemaFamily()
+Schema = schema_family.Schema
 
 class KUFish(Schema):
 
@@ -39,13 +39,13 @@ class KUFish(Schema):
         accepted = Link("Taxon")
 
     class ReferenceWork(Record):
-        type_of_work = Text(required)
+        type_of_work = Text()
         title = Text()
         publisher = Text()
         place_of_publication = Text()
         volume = Text()
         pages = Text()
-        date_of_work = Date()
+        date_of_work = Text()
         url = Text()
         journal = Link("Journal")
 

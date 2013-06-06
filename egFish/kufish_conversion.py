@@ -1,191 +1,189 @@
-from specify.schema.conversion import  Record, Schema, source_table, Enum, Tree, outerjoin
+from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree
+from specify.schema.conversion_field_types import Enum, outerjoin, Column, ForeignKey
+
+schema_family = SchemaFamily()
+Schema = schema_family.Schema
+
+def to_int(value):
+    return int(value) if value is not None else None
 
 class KUFish(Schema):
 
     @source_table("agent")
     class Agent(Record):
-        agent_type = Enum('AgentType', 'Organization Person Other Group')
-        title = 'Title'
-        job_title = 'JobTitle'
-        last_name = 'LastName'
-        first_name = 'FirstName'
-        middle_initial = 'MiddleInitial'
-        abbreviation = 'Abbreviation'
-        email = 'Email'
-        url = 'URL'
+        agent_type = Enum("AgentType", "Organization Person Other Group")
+        title = Column("Title")
+        job_title = Column("JobTitle")
+        last_name = Column("LastName")
+        first_name = Column("FirstName")
+        middle_initial = Column("MiddleInitial")
+        abbreviation = Column("Abbreviation")
+        email = Column("Email")
+        url = Column("URL")
 
-        @source_table("address", order_by="Ordinal")
+        @source_table("address", order_by="Ordinal", parent_field="AgentID")
         class Address(Record):
-            _parent_field = "AgentID"
-            is_current = "IsCurrent"
-            address1 = "Address"
-            address2 = "Address2"
-            city = "City"
-            state = "State"
-            country = "Country"
-            postal_code = "PostalCode"
-            room_building = "RoomOrBuilding"
-            phone1 = "Phone1"
-            phone2 = "Phone2"
-            fax = "Fax"
+            is_current = Column("IsCurrent")
+            address1 = Column("Address")
+            address2 = Column("Address2")
+            city = Column("City")
+            state = Column("State")
+            country = Column("Country")
+            postal_code = Column("PostalCode")
+            room_building = Column("RoomOrBuilding")
+            phone1 = Column("Phone1")
+            phone2 = Column("Phone2")
+            fax = Column("Fax")
 
     @source_table("taxon")
     class Taxon(Tree):
-        common_name = "CommonName"
-        source = "Source"
-        protected_status = "EnvironmentalProtectionStatus"
-        author = "Author"
-        accepted = "AcceptedID"
+        common_name = Column("CommonName")
+        source = Column("Source")
+        protected_status = Column("EnvironmentalProtectionStatus")
+        author = Column("Author")
+        accepted = ForeignKey("AcceptedID")
 
     @source_table("referencework")
     class ReferenceWork(Record):
         type_of_work = Enum("ReferenceWorkType", 'Book ElectronicMedia Paper TechnicalReport Thesis SectionInBook'),
-        title = "Title"
-        publisher = "Publisher"
-        place_of_publication = "PlaceOfPublication"
-        volume = "Volume"
-        pages = "Pages"
-        date_of_work = "WorkDate"
-        url = "URL"
-        journal = "JournalID"
+        title = Column("Title")
+        publisher = Column("Publisher")
+        place_of_publication = Column("PlaceOfPublication")
+        volume = Column("Volume")
+        pages = Column("Pages")
+        date_of_work = Column("WorkDate")
+        url = Column("URL")
+        journal = ForeignKey("JournalID")
 
-        @source_table("author", order_by="OrderNumber")
+        @source_table("author", order_by="OrderNumber", parent_field="ReferenceWorkID")
         class Author(Record):
-            _parent_field = "ReferenceWorkID"
-            agent = "AgentID"
+            agent = ForeignKey("AgentID")
 
     @source_table("journal")
     class Journal(Record):
-        name = "JournalName"
-        abbreviation = "JournalAbbreviation"
+        name = Column("JournalName")
+        abbreviation = Column("JournalAbbreviation")
 
     @source_table("accession")
     class Accession(Record):
-        accession_number = "AccessionNumber"
-        status = "Status"
-        accession_type = "Type"
-        accession_date = "DateAccessioned"
-        received_date = "DateReceived"
-        number_of_lots = "Number1"
-        number_of_specimens = "Numeber2"
-        description = "Text1"
+        accession_number = Column("AccessionNumber")
+        status = Column("Status")
+        accession_type = Column("Type")
+        accession_date = Column("DateAccessioned")
+        received_date = Column("DateReceived")
+        number_of_lots = Column("Number1", process=to_int)
+        number_of_specimens = Column("Number2", process=to_int)
+        description = Column("Text1")
 
-        @source_table("accessionagent")
+        @source_table("accessionagent", parent_field="AccessionID")
         class AccessionAgent(Record):
-            _parent_field = "AccessionID"
-            agent = "AgentID"
-            role = "Role"
+            agent = ForeignKey("AgentID")
+            role = Column("Role")
 
     @source_table("geography")
     class Geography(Tree):
-        accepted = "AcceptedID"
+        accepted = ForeignKey("AcceptedID")
 
     @source_table("locality")
     class Locality(Record):
-        name = "LocalityName"
-        geography = "GeographyID"
-        water_type = "ElevationMethod"
+        name = Column("LocalityName")
+        geography = ForeignKey("GeographyID")
+        water_type = Column("ElevationMethod")
         # section = outerjoin("localitydetail").field("Section")
         # township = outerjoin("localitydetail")
-        # range = Field(text)
-        # island = Field(text)
-        # island_group = Field(text)
-        # water_body = Field(text)
-        # drainage = Field(text)
+        # range = Column(text)
+        # island = Column(text)
+        # island_group = Column(text)
+        # water_body = Column(text)
+        # drainage = Column(text)
 
     @source_table("collectingevent")
     class CollectingEvent(Record):
-        field_number = "StationFieldNumber"
-        collecting_date = "StartDate"
-        gear = "Method"
-        locality = "LocalityID"
-        trip = "CollectingTripID"
+        field_number = Column("StationFieldNumber")
+        collecting_date = Column("StartDate")
+        gear = Column("Method")
+        locality = ForeignKey("LocalityID")
+        trip = ForeignKey("CollectingTripID")
 
-        @source_table("collector", order_by="OrderNumber")
+        @source_table("collector", order_by="OrderNumber", parent_field="CollectingEventID")
         class Collector(Record):
-            _parent_field = "CollectingEventID"
-            agent = "AgentID"
+            agent = ForeignKey("AgentID")
 
     @source_table("collectingtrip")
     class CollectingTrip(Record):
-        vessel = "CollectingTripName"
-        cruise = "StartDateVerbatim"
-        haul = "EndDateVerbatim"
+        vessel = Column("CollectingTripName")
+        cruise = Column("StartDateVerbatim")
+        haul = Column("EndDateVerbatim")
 
 class KUFishVoucher(Schema):
 
-    @source_table("collectionobject", where=lambda table: table.collection_id == 4)
+    @source_table("collectionobject", where=lambda table: table.c.CollectionID == 4)
     class CollectionObject(Record):
-        catalog_number = "CatalogNumber"
-        cataloged_date = "CatalogedDate"
+        catalog_number = Column("CatalogNumber")
+        cataloged_date = Column("CatalogedDate")
         size = outerjoin("collectionobjectattribute", "Text11")
         sex = outerjoin("collectionobjectattribute", "Text8")
         weight = outerjoin("collectionobjectattribute", "Text2")
-        cataloger = "CatalogerID"
-        accession = "AccessionID"
-        collecting_event = "CollectingEventID"
+        cataloger = ForeignKey("CatalogerID")
+        accession = ForeignKey("AccessionID")
+        collecting_event = ForeignKey("CollectingEventID")
 
-        @source_table("determination")
+        @source_table("determination", parent_field="CollectionObjectID")
         class Determination(Record):
-            _parent_field = "CollectionObjectID"
-            determiner = "DeterminerID"
-            determination_date = "DeterminedDate"
-            type_status = "TypeStatusName"
-            taxon = "AcceptedID"
+            determiner = ForeignKey("DeterminerID")
+            determination_date = Column("DeterminedDate")
+            type_status = Column("TypeStatusName")
+            taxon = ForeignKey("TaxonID")
 
-        @source_table("preparation")
+        @source_table("preparation", parent_field="CollectionObjectID")
         class Preparation(Record):
-            _parant_field = "CollectionObjectID"
-            preparer = "PreparedByID"
-            prep_date = "PreparedDate"
-            prep_type = "PrepTypeID"
-            count = "CountAmount"
+            preparer = ForeignKey("PreparedByID")
+            prep_date = Column("PreparedDate")
+            prep_type = Column("PrepTypeID")
+            count = Column("CountAmt")
 
 class KUFishTissue(Schema):
 
-    @source_table("collectionobject", where=lambda table: table.collection_id == 32768)
+    @source_table("collectionobject", where=lambda table: table.c.CollectionID == 32768)
     class CollectionObject(Record):
-        catalog_number = "CatalogNumber"
-        cataloged_date = "CatalogedDate"
+        catalog_number = Column("CatalogNumber")
+        cataloged_date = Column("CatalogedDate")
         preservation = outerjoin("collectionobjectattribute", "Text10")
         tissue_type = outerjoin("collectionobjectattribute", "Text12")
         size = outerjoin("collectionobjectattribute", "Text11")
         sex = outerjoin("collectionobjectattribute", "Text8")
-        cataloger = "CatalogerID"
-        accession = "AccessionID"
-        collecting_event = "CollectingEventID"
+        cataloger = ForeignKey("CatalogerID")
+        accession = ForeignKey("AccessionID")
+        collecting_event = ForeignKey("CollectingEventID")
         #voucher = outerjoin("collectionreltype")
 
-        @source_table("determination")
+        @source_table("determination", parent_field="CollectionObjectID")
         class Determination(Record):
-            _parent_field = "CollectionObjectID"
-            determiner = "DeterminerID"
-            determination_date = "DeterminedDate"
-            type_status = "TypeStatusName"
-            taxon = "AcceptedID"
+            determiner = ForeignKey("DeterminerID")
+            determination_date = Column("DeterminedDate")
+            type_status = Column("TypeStatusName")
+            taxon = ForeignKey("TaxonID")
 
-        @source_table("preparation")
+        @source_table("preparation", parent_field="CollectionObjectID")
         class Preparation(Record):
-            _parent_field = "CollectionObjectID"
-            preparer = "PreparedByID"
-            prep_date = "PreparedDate"
-            prep_type = "PrepTypeID"
-            count = "CountAmount"
-            tubes = "Number1"
-            used_up = "YesNo1"
-            storage = "Text1"
+            preparer = ForeignKey("PreparedByID")
+            prep_date = Column("PreparedDate")
+            prep_type = Column("PrepTypeID")
+            count = Column("CountAmt")
+            tubes = Column("Number1")
+            used_up = Column("YesNo1")
+            storage = Column("Text1")
 
-        @source_table("dnasequence")
+        @source_table("dnasequence", parent_field="CollectionObjectID")
         class DNASequence(Record):
-            _parent_field = "CollectionObjectID"
-            bold_barcode_id = "BOLDBarcodeID"
-            molecule_type = "MoleculeType"
-            genbank_accession_number = "GenBankAccessionNumber"
-            gene_sequence = "GeneSequence"
-            total_residues = "TotalResidues"
-            comp_a = "CompA"
-            comp_c = "CompC"
-            comp_g = "CompG"
-            comp_t = "CompT"
-            ambiguous_residues = "AmbiguousResidues"
-            sequenced_by = "AgentID"
+            bold_barcode_id = Column("BOLDBarcodeID")
+            molecule_type = Column("MoleculeType")
+            genbank_accession_number = Column("GenBankAccessionNumber")
+            gene_sequence = Column("GeneSequence")
+            total_residues = Column("TotalResidues")
+            comp_a = Column("CompA")
+            comp_c = Column("CompC")
+            comp_g = Column("CompG")
+            comp_t = Column("compT")
+            ambiguous_residues = Column("AmbiguousResidues")
+            sequenced_by = ForeignKey("AgentID")

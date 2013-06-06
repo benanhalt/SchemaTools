@@ -1,5 +1,9 @@
+from collections import namedtuple
+
 from . import base, fields
 from .generics import generic, method, next_method
+
+ReverseJoin = namedtuple("ReverseJoin", "table_name column_name")
 
 class Column(base.Field):
     def __init__(self, path, *, process=None):
@@ -12,14 +16,24 @@ class Column(base.Field):
         self.process = process if process is not None else lambda v: v
 
     def check_against_table(self):
-        from .conversion import get_primary_key_col
+        from .conversion import get_primary_key_col, reflect_table
 
         table = self.record.source_table
         path = list(self.path)
         self.joins = {}
         while True:
             column_name = path.pop(0)
-            assert column_name in table.c, 'Table "%s" has no column named "%s".' % (table, column_name)
+            if isinstance(column_name, ReverseJoin):
+                assert len(path) > 0, "ReverseJoin cannot be final element of path."
+                pk = get_primary_key_col(table)
+                table = reflect_table(column_name.table_name, self.record.source_table.metadata)
+                column_name = column_name.column_name
+                assert_column_in_table(table, column_name)
+                column = table.c[column_name]
+                self.joins[table] = column == pk
+                continue
+
+            assert_column_in_table(table, column_name)
             column = table.c[column_name]
             if len(path) > 0:
                 table = list(column.foreign_keys)[0].column.table
@@ -81,3 +95,6 @@ def check_base_field_types(out: base.Field, field):
 @method(check_field_types)
 def check_link_field_types(out: fields.Link, field):
     assert isinstance(field, ForeignKey)
+
+def assert_column_in_table(table, column_name):
+    assert column_name in table.c, 'Table "%s" has no column named "%s".' % (table, column_name)

@@ -46,12 +46,16 @@ def reflect_record(record, metadata):
 
 @method(reflect_record)
 def reflect_regular_record(record: base.RecordMeta, metadata):
-    record.source_table = Table(record.source_table_name, metadata, autoload=True)
+    record.source_table = reflect_table(record.source_table_name, metadata)
+
     for field in record.fields.values():
         field.check_against_table()
 
     for child in record.children.values():
         reflect_record(child, metadata)
+
+def reflect_table(table_name, metadata):
+    return Table(table_name, metadata, autoload=True)
 
 def join_schema_family_with_conversion(schema_family, conversion_schema_family):
     for name in conversion_schema_family.schemas:

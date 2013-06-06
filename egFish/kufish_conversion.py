@@ -1,5 +1,5 @@
 from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree
-from specify.schema.conversion_field_types import Enum, Column, ForeignKey
+from specify.schema.conversion_field_types import Enum, Column, ForeignKey, ReverseJoin
 
 schema_family = SchemaFamily()
 Schema = schema_family.Schema
@@ -89,13 +89,16 @@ class KUFish(Schema):
         name = Column("LocalityName")
         geography = ForeignKey("GeographyID")
         water_type = Column("ElevationMethod")
-        # section = Column(["LocalityDetailID", "Section"])
-        # township = Column(["LocalityDetailID", "Township"])
-        # range = Column(["LocalityDetailID", "RangeDesc"])
-        # island = Column(["LocalityDetailID", "Island"])
-        # island_group = Column(["LocalityDetailID", "IslandGroup"])
-        # water_body = Column(["LocalityDetailID", "WaterBody"])
-        # drainage = Column(["LocalityDetailID", "Drainage"])
+
+        locality_detail = ReverseJoin('localitydetail', "LocalityID")
+
+        section = Column([locality_detail, "Section"])
+        township = Column([locality_detail, "Township"])
+        range = Column([locality_detail, "RangeDesc"])
+        island = Column([locality_detail, "Island"])
+        island_group = Column([locality_detail, "IslandGroup"])
+        water_body = Column([locality_detail, "WaterBody"])
+        drainage = Column([locality_detail, "Drainage"])
 
     @source_table("collectingevent")
     class CollectingEvent(Record):

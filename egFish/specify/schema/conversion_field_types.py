@@ -1,18 +1,34 @@
 from . import base, fields
 from .generics import generic, method, next_method
 
-
-def outerjoin(*args, **kwargs):
-    pass
-
 class Column(base.Field):
-    def __init__(self, column_name, *args, process=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.column_name = column_name
+    def __init__(self, path, *, process=None):
+        super().__init__()
+        if isinstance(path, str):
+            self.path = [ path ]
+        else:
+            self.path = path
+
         self.process = process if process is not None else lambda v: v
 
     def check_against_table(self):
-        assert self.column_name in self.record.source_table.c, 'Table "%s" has no column named "%s".' % (table, self.column_name)
+        from .conversion import get_primary_key_col
+
+        table = self.record.source_table
+        path = list(self.path)
+        self.joins = {}
+        while True:
+            column_name = path.pop(0)
+            assert column_name in table.c, 'Table "%s" has no column named "%s".' % (table, column_name)
+            column = table.c[column_name]
+            if len(path) > 0:
+                table = list(column.foreign_keys)[0].column.table
+                self.joins[table] = column == get_primary_key_col(table)
+            else:
+                break
+
+        self.column_name = column_name
+        self.column = table.c[self.column_name]
 
     def set_output_field(self):
         self.output_field = self.record.output_record.fields[self.__name__]
@@ -25,20 +41,16 @@ class Column(base.Field):
     def check_field_types(self):
         check_field_types(self.output_field, self)
 
-    def get_input_column(self):
-        return self.record.source_table.c[self.column_name]
-
     def get_input_columns(self):
-        return [ self.get_input_column() ]
+        return [ self.column ]
 
     def process_row(self, row):
-        input_column = self.get_input_column()
         output_column = self.output_field.name
-        return output_column, self.process(row[input_column])
+        return output_column, self.process(row[self.column])
 
 class Enum(Column):
-    def __init__(self, column_name, values, *args, **kwargs):
-        super().__init__(column_name, *args, **kwargs)
+    def __init__(self, path, values, *args, **kwargs):
+        super().__init__(path, *args, **kwargs)
         self.values = values
 
     def process_row(self, row):
@@ -57,13 +69,6 @@ class ForeignKey(Column):
     def check_field_types(self):
         super().check_field_types()
         assert isinstance(self.output_field, fields.Link)
-
-class OuterJoin(Column):
-    def __init__(self, path, *args, **kwargs):
-        
-        if hasattr(path, 'split'):
-            path = path.split()
-        self.path = path
 
 @generic
 def check_field_types(output_field, input_field):

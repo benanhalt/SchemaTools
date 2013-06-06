@@ -1,5 +1,5 @@
 from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree
-from specify.schema.conversion_field_types import Enum, outerjoin, Column, ForeignKey
+from specify.schema.conversion_field_types import Enum, Column, ForeignKey
 
 schema_family = SchemaFamily()
 Schema = schema_family.Schema
@@ -89,13 +89,13 @@ class KUFish(Schema):
         name = Column("LocalityName")
         geography = ForeignKey("GeographyID")
         water_type = Column("ElevationMethod")
-        # section = outerjoin("localitydetail").field("Section")
-        # township = outerjoin("localitydetail")
-        # range = Column(text)
-        # island = Column(text)
-        # island_group = Column(text)
-        # water_body = Column(text)
-        # drainage = Column(text)
+        # section = Column(["LocalityDetailID", "Section"])
+        # township = Column(["LocalityDetailID", "Township"])
+        # range = Column(["LocalityDetailID", "RangeDesc"])
+        # island = Column(["LocalityDetailID", "Island"])
+        # island_group = Column(["LocalityDetailID", "IslandGroup"])
+        # water_body = Column(["LocalityDetailID", "WaterBody"])
+        # drainage = Column(["LocalityDetailID", "Drainage"])
 
     @source_table("collectingevent")
     class CollectingEvent(Record):
@@ -121,9 +121,9 @@ class KUFishVoucher(Schema):
     class CollectionObject(Record):
         catalog_number = Column("CatalogNumber")
         cataloged_date = Column("CatalogedDate")
-        size = outerjoin("collectionobjectattribute", "Text11")
-        sex = outerjoin("collectionobjectattribute", "Text8")
-        weight = outerjoin("collectionobjectattribute", "Text2")
+        size = Column(["CollectionObjectAttributeID", "Text11"])
+        sex = Column(["CollectionObjectAttributeID", "Text8"])
+        weight = Column(["CollectionObjectAttributeID", "Text2"])
         cataloger = ForeignKey("CatalogerID")
         accession = ForeignKey("AccessionID")
         collecting_event = ForeignKey("CollectingEventID")
@@ -139,7 +139,7 @@ class KUFishVoucher(Schema):
         class Preparation(Record):
             preparer = ForeignKey("PreparedByID")
             prep_date = Column("PreparedDate")
-            prep_type = Column("PrepTypeID")
+            prep_type = Column(["PrepTypeID", "Name"])
             count = Column("CountAmt")
 
 class KUFishTissue(Schema):
@@ -148,14 +148,14 @@ class KUFishTissue(Schema):
     class CollectionObject(Record):
         catalog_number = Column("CatalogNumber")
         cataloged_date = Column("CatalogedDate")
-        preservation = outerjoin("collectionobjectattribute", "Text10")
-        tissue_type = outerjoin("collectionobjectattribute", "Text12")
-        size = outerjoin("collectionobjectattribute", "Text11")
-        sex = outerjoin("collectionobjectattribute", "Text8")
+        preservation = Column(["CollectionObjectAttributeID", "Text10"])
+        tissue_type = Column(["CollectionObjectAttributeID", "Text12"])
+        size = Column(["CollectionObjectAttributeID", "Text11"])
+        sex = Column(["CollectionObjectAttributeID", "Text8"])
         cataloger = ForeignKey("CatalogerID")
         accession = ForeignKey("AccessionID")
         collecting_event = ForeignKey("CollectingEventID")
-        #voucher = outerjoin("collectionreltype")
+        #voucher = Column("collectionreltype")
 
         @source_table("determination", parent_field="CollectionObjectID")
         class Determination(Record):
@@ -168,9 +168,9 @@ class KUFishTissue(Schema):
         class Preparation(Record):
             preparer = ForeignKey("PreparedByID")
             prep_date = Column("PreparedDate")
-            prep_type = Column("PrepTypeID")
+            prep_type = Column(["PrepTypeID", "Name"])
             count = Column("CountAmt")
-            tubes = Column("Number1")
+            tubes = Column("Number1", process=to_int)
             used_up = Column("YesNo1")
             storage = Column("Text1")
 

@@ -112,6 +112,13 @@ def get_data_for_regular_record(record: base.RecordMeta):
     for join in joins:
         select_from = select_from.join(*join)
 
+    outer_joins = {table: cond
+                   for field in record.fields.values()
+                   for table, cond in field.joins.items()}
+
+    for table, cond in outer_joins.items():
+        select_from = select_from.outerjoin(table, cond)
+
     query = query.select_from(select_from)
     for where in wheres:
         query = query.where(where)

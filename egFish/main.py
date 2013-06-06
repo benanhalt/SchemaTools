@@ -11,7 +11,7 @@ engine = sqlalchemy.create_engine(
 
 mysql_engine = sqlalchemy.create_engine(
     'mysql+pymysql://Master:Master@localhost/ku_fish_tissue_201302_django15',
-    echo=False)
+    echo=True)
 
 metadata = sqlalchemy.MetaData(bind=engine)
 schemas = to_sqlalchemy.process_schemas(metadata, kufish_schema.schema_family)

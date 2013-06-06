@@ -116,7 +116,7 @@ class KUFishVoucher(Schema):
             determiner = Link(KUFish.Agent)
             determination_date = Date()
             type_status = Text()
-            taxon = Link(KUFish.Taxon, required)
+            taxon = Link(KUFish.Taxon)
 
         class Preparation(Record):
             preparer = Link(KUFish.Agent)
@@ -143,7 +143,7 @@ class KUFishTissue(Schema):
             determiner = Link(KUFish.Agent)
             determination_date = Date()
             type_status = Text()
-            taxon = Link(KUFish.Taxon, required)
+            taxon = Link(KUFish.Taxon)
 
         class Preparation(Record):
             preparer = Link(KUFish.Agent)

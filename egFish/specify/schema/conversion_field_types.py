@@ -14,16 +14,16 @@ class Column(base.Field):
     def check_against_table(self):
         assert self.column_name in self.record.source_table.c, 'Table "%s" has no column named "%s".' % (table, self.column_name)
 
-    def set_output_field(self, output_field):
-        self.output_field = output_field
+    def set_output_field(self):
+        self.output_field = self.record.output_record.fields[self.__name__]
         try:
-            self.check_field_types(output_field)
+            self.check_field_types()
         except AssertionError as e:
             raise TypeError('Conversion field "%s" and schema field "%s" '
-                            'have incompatible types.' % (self, output_field)) from e
+                            'have incompatible types.' % (self, self.output_field)) from e
 
-    def check_field_types(self, output_field):
-        check_field_types(output_field, self)
+    def check_field_types(self):
+        check_field_types(self.output_field, self)
 
     def get_input_column(self):
         return self.record.source_table.c[self.column_name]
@@ -45,18 +45,25 @@ class Enum(Column):
         output_col, value = super().process_row(row)
         return output_col, self.values[value]
 
-    def check_field_types(self, output_field):
-        super().check_field_types(output_field)
-        assert isinstance(output_field, fields.Text)
+    def check_field_types(self):
+        super().check_field_types()
+        assert isinstance(self.output_field, fields.Text)
 
 class ForeignKey(Column):
     def process_row(self, row):
         output_col, value = super().process_row(row)
         return output_col, str(value) if value is not None else None
 
-    def check_field_types(self, output_field):
-        super().check_field_types(output_field)
-        assert isinstance(output_field, fields.Link)
+    def check_field_types(self):
+        super().check_field_types()
+        assert isinstance(self.output_field, fields.Link)
+
+class OuterJoin(Column):
+    def __init__(self, path, *args, **kwargs):
+        
+        if hasattr(path, 'split'):
+            path = path.split()
+        self.path = path
 
 @generic
 def check_field_types(output_field, input_field):

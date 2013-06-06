@@ -1,12 +1,25 @@
 import uuid
 from collections import namedtuple
 from functools import partial, wraps
+from types import MethodType
 
 from . import base
 from .generics import generic, method, next_method
 
 from sqlalchemy import Table, Column, Text, Integer, select, text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.mysql import BIT as mysql_BIT
+
+def mysql_BIT_processor(self, dialect, coltype):
+    def process(value):
+        if value is None:
+            return None
+        v = 0
+        for i in value:
+            v = v << 8 | i
+        return v
+    return process
+mysql_BIT.result_processor = MethodType(mysql_BIT_processor, mysql_BIT)
 
 SchemaFamily = base.SchemaFamily
 Record = base.Record
@@ -52,12 +65,12 @@ def join_schema_with_conversion(schema, conversion_schema):
 
 def join_record_with_conversion(record, conversion_record):
     conversion_record.output_record = record
-    for field_name in conversion_record.fields:
-        conversion_record.fields[field_name].set_output_field(record.fields[field_name])
+    for field in conversion_record.fields.values():
+        field.set_output_field()
 
-        for child_name in conversion_record.children:
-            join_record_with_conversion(record.children[child_name],
-                                        conversion_record.children[child_name])
+    for child_name in conversion_record.children:
+        join_record_with_conversion(record.children[child_name],
+                                    conversion_record.children[child_name])
 
 def do_conversion(conversion_schema_family, output_metadata):
 
@@ -75,6 +88,9 @@ def do_conversion(conversion_schema_family, output_metadata):
         output_table = output_metadata.tables[record.output_record.full_name]
         connection.execute(output_table.insert(), data)
 
+        for child in record.children.values():
+            convert_record(child, connection)
+
     with output_metadata.bind.begin() as connection:
         connection.execute('SET CONSTRAINTS ALL DEFERRED')
         for schema in conversion_schema_family.schemas.values():
@@ -90,12 +106,36 @@ def get_data_for_regular_record(record: base.RecordMeta):
     processors = get_processors_for_record(record)
 
     query = select(input_columns)
-    if record.where is not None:
-        query = query.where( record.where(record.source_table) )
+
+    joins, wheres = add_joins(record)
+    select_from = record.source_table
+    for join in joins:
+        select_from = select_from.join(*join)
+
+    query = query.select_from(select_from)
+    for where in wheres:
+        query = query.where(where)
 
     print('Loading data...')
     return [dict(processor(row) for processor in processors)
             for row in query.execute()]
+
+def add_joins(record):
+    joins = []
+    wheres = []
+    while True:
+        if record.where is not None:
+            wheres.append( record.where(record.source_table) )
+
+        if record.parent_field is None:
+            break
+
+        joins.append( (record.parent.source_table,
+                       record.source_table.c[record.parent_field] == \
+                       get_primary_key_col(record.parent.source_table)) )
+
+        record = record.parent
+    return joins, wheres
 
 @generic
 def get_input_columns_for_record(record):
@@ -112,12 +152,20 @@ def get_input_columns_for_regular_record(record: base.RecordMeta):
                       for col in field.get_input_columns() }
 
     input_columns.add( get_primary_key_col(record.source_table) )
+
+    if record.parent_field is not None:
+        input_columns.add( record.source_table.c[record.parent_field] )
+
     return input_columns
 
 @method(get_processors_for_record)
 def get_processors_for_regular_record(record: base.RecordMeta):
     processors = [ field.process_row for field in record.fields.values() ]
     processors.append( pk_processor(record) )
+
+    if record.parent_field is not None:
+        processors.append( parent_field_processor(record) )
+
     return processors
 
 @method(get_processors_for_record)
@@ -133,3 +181,6 @@ def pk_processor(record):
 def get_primary_key_col(table):
     return table.primary_key.columns.values()[0]
 
+def parent_field_processor(record):
+    parent_field = record.output_record.parent.name # TODO: this should make use of to_sqlalchemy
+    return lambda row: (parent_field, str(row[record.source_table.c[record.parent_field]]))

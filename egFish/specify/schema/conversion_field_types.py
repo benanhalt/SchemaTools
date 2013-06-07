@@ -2,6 +2,10 @@ from collections import namedtuple
 
 from . import base, fields
 from .generics import generic, method, next_method
+from .utils import IgnoreException
+from .conversion import get_primary_key_col, reflect_table, uuid5, root_uuid
+
+
 
 ReverseJoin = namedtuple("ReverseJoin", "table_name column_name")
 
@@ -16,8 +20,6 @@ class Column(base.Field):
         self.process = process if process is not None else lambda v: v
 
     def check_against_table(self):
-        from .conversion import get_primary_key_col, reflect_table
-
         table = self.record.source_table
         path = list(self.path)
         self.joins = {}
@@ -36,7 +38,7 @@ class Column(base.Field):
             assert_column_in_table(table, column_name)
             column = table.c[column_name]
             if len(path) > 0:
-                table = list(column.foreign_keys)[0].column.table
+                table = get_remote_table_from_fk(column)
                 self.joins[table] = column == get_primary_key_col(table)
             else:
                 break
@@ -76,9 +78,17 @@ class Enum(Column):
         assert isinstance(self.output_field, fields.Text)
 
 class ForeignKey(Column):
+    def get_table_uuid(self):
+        with IgnoreException(AttributeError):
+            return self.table_uuid
+        self.table_uuid = uuid5(root_uuid, get_remote_table_from_fk(self.column).name)
+        return self.table_uuid
+
     def process_row(self, row):
         output_col, value = super().process_row(row)
-        return output_col, str(value) if value is not None else None
+        if value is not None:
+            value = uuid5(self.get_table_uuid(), str(value))
+        return output_col, value
 
     def check_field_types(self):
         super().check_field_types()
@@ -98,3 +108,6 @@ def check_link_field_types(out: fields.Link, field):
 
 def assert_column_in_table(table, column_name):
     assert column_name in table.c, 'Table "%s" has no column named "%s".' % (table, column_name)
+
+def get_remote_table_from_fk(column):
+    return list(column.foreign_keys)[0].column.table

@@ -1,4 +1,4 @@
-import uuid
+from uuid import uuid4, uuid5
 from collections import namedtuple
 from functools import partial, wraps
 from types import MethodType
@@ -9,6 +9,8 @@ from .generics import generic, method, next_method
 from sqlalchemy import Table, Column, Text, Integer, select, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.mysql import BIT as mysql_BIT
+
+root_uuid = uuid4()
 
 def mysql_BIT_processor(self, dialect, coltype):
     def process(value):
@@ -187,11 +189,14 @@ def get_processors_for_tree(tree: base.TreeMeta):
 
 def pk_processor(record):
     pk = get_primary_key_col(record.source_table)
-    return lambda row: ('uuid', str(row[pk]))
+    table_uuid = uuid5(root_uuid, record.source_table.name)
+    return lambda row: ('uuid', uuid5(table_uuid, str(row[pk])))
 
 def get_primary_key_col(table):
     return table.primary_key.columns.values()[0]
 
 def parent_field_processor(record):
     parent_field = record.output_record.parent.name # TODO: this should make use of to_sqlalchemy
-    return lambda row: (parent_field, str(row[record.source_table.c[record.parent_field]]))
+    fk_col = record.source_table.c[record.parent_field]
+    table_uuid = uuid5(root_uuid, record.parent.source_table.name)
+    return lambda row: (parent_field, uuid5(table_uuid, str(row[fk_col])))

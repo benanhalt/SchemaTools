@@ -40,7 +40,7 @@ def base_columns(obj):
 
 @method(base_columns)
 def base_columns_for_record(record: base.RecordMeta):
-    cols = [ Column('uuid', sqlalchemy.Text, primary_key=True) ]
+    cols = [ Column('uuid', postgresql.UUID, primary_key=True) ]
 
     if hasattr(record, 'parent'):
         name = record.parent.name

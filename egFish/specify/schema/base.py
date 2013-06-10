@@ -2,7 +2,6 @@ import sys
 from collections import OrderedDict
 
 from .orderedclass import OrderedMeta
-from .generics import WithGenerics
 
 def is_field(obj):
     return isinstance(obj, Field)
@@ -16,7 +15,7 @@ def is_tree(obj):
 def is_schema(obj):
     return isinstance(obj, SchemaMeta)
 
-class Field(WithGenerics):
+class Field:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
@@ -28,7 +27,7 @@ class Field(WithGenerics):
     def __str__(self):
         return self.__class__.__name__ + ': ' + self.record.__qualname__ + '.' + self.__name__
 
-class RecordMeta(WithGenerics, OrderedMeta):
+class RecordMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
         record = super().__new__(meta, name, bases, clsdict)
         values = [getattr(record, key) for key in record._keys]
@@ -68,7 +67,7 @@ class RecordMeta(WithGenerics, OrderedMeta):
 class Record(metaclass=RecordMeta):
     pass
 
-class SchemaMeta(WithGenerics, OrderedMeta):
+class SchemaMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
         schema = super().__new__(meta, name, bases, clsdict)
         values = [getattr(schema, key) for key in schema._keys]

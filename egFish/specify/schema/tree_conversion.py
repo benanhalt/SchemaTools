@@ -29,7 +29,8 @@ def reflect_sp6tree(tree: Sp6TreeMeta, metadata):
 
 @method(postprocess_record)
 def postprocess_sp6tree(tree: Sp6TreeMeta, output_metadata, connection):
-    #TODO: fix next_method
+    next_method(postprocess_sp6tree, tree, output_metadata, connection)
+
     meta = tree.__class__
     output_table = output_metadata.tables[tree.output_record.full_name]
     treedefid_col = meta.treedefitem_table.c[get_primary_key_col(meta.treedef_table).name]

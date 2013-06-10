@@ -1,59 +1,53 @@
 from functools import wraps
-from types import MethodType
+from collections import defaultdict
 import inspect
 
-generics_map = {}
-counter = 0
+generics_map = defaultdict(dict)
 
-class GenericsMeta(type):
-    def __new__(meta, name, bases, clsdict):
-        cls = super().__new__(meta, name, bases, clsdict)
-        generics_bases = tuple(generics_map.get(base) for base in bases
-                               if base in generics_map)
-        generics_cls = type(cls.__name__ + "Generics", generics_bases, {})
-        generics_map[cls] = generics_cls
-        return cls
-
-class WithGenerics(metaclass=GenericsMeta):
+class NoMethodException(Exception):
     pass
 
-def get_generics_cls(cls):
-    try:
-        return generics_map[cls]
-    except KeyError:
-        raise ValueError('%s was created without generics support' % cls)
-
 def generic(func):
-    global counter
-    func_name = func.__name__ + str(counter)
-    counter += 1
-
     @wraps(func)
-    def wrapped(obj, *args, **kwargs):
-        generics_cls = get_generics_cls(obj.__class__)
-        return call_generic_func(generics_cls, func_name, obj, *args, **kwargs)
-    wrapped.name = func_name
-    return wrapped
+    def generic_func(obj, *args, **kwargs):
+        try:
+            return call_generic(obj.__class__.__mro__, generic_func, obj, *args, **kwargs)
+        except NoMethodException as e:
+            raise NoMethodException('No method for generic function "%r" for object "%r".' % (
+                func, obj)) from e
 
-def call_generic_func(generics_cls, func_name, obj, *args, **kwargs):
-    return getattr(generics_cls, func_name)(obj, *args, **kwargs)
+    generic_func.default = func
+    return generic_func
+
+def call_generic(mro, generic_func, obj, *args, **kwargs):
+    if mro is ():
+        raise NoMethodException()
+
+    cls = mro[0]
+
+    try:
+        meth = generics_map[cls][generic_func]
+    except KeyError:
+        return call_generic(cls.__mro__[1:], generic_func, obj, *args, **kwargs)
+
+    return meth(obj, *args, **kwargs)
 
 def get_class_from_annotation(func):
     argspec = inspect.getfullargspec(func)
     return argspec.annotations[argspec.args[0]]
 
 def method(generic_func):
-    def decorator(func):
-        cls = get_class_from_annotation(func)
-        generics_cls = get_generics_cls(cls)
-        func.generics_cls = generics_cls
-        func.generic_func = generic_func
-        setattr(generics_cls, generic_func.name, func)
-        return func
+    def decorator(meth):
+        cls = get_class_from_annotation(meth)
+        generics_map[cls][generic_func] = meth
+        meth.generic_func = generic_func
+        return meth
     return decorator
 
-def next_method(current_func, obj, *args, **kwargs):
-    func_name = current_func.generic_func.name
-    generics_cls = current_func.generics_cls
-    return call_generic_func(super(generics_cls, generics_cls), func_name, obj, *args, **kwargs)
-
+def next_method(current_meth, obj, *args, **kwargs):
+    cls = get_class_from_annotation(current_meth)
+    try:
+        return call_generic(cls.__mro__[1:], current_meth.generic_func, obj, *args, **kwargs)
+    except NoMethodException as e:
+        raise NoMethodException('No next method for generic function "%r" for object "%r".' % (
+            func, obj)) from e

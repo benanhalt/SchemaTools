@@ -23,11 +23,4 @@ conversion.reflect_database(mysql_metadata, kufish_conversion.schema_family)
 conversion.join_schema_family_with_conversion(kufish_schema.schema_family,
                                               kufish_conversion.schema_family)
 
-# # id_map = conversion.define_id_map_table(metadata)
-
-
-# # id_map.drop(checkfirst=True)
-# # id_map.create()
-# # conversion.populate_id_map(mysql_metadata, id_map)
-
 conversion.do_conversion(kufish_conversion.schema_family, metadata)

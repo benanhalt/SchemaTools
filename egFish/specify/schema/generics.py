@@ -46,12 +46,14 @@ def method(generic_func):
     def decorator(func):
         cls = get_class_from_annotation(func)
         generics_cls = get_generics_cls(cls)
+        func.generics_cls = generics_cls
+        func.generic_func = generic_func
         setattr(generics_cls, generic_func.name, func)
         return func
     return decorator
 
-def next_method(generic_func, obj, *args, **kwargs):
-    func_name = generic_func.name
-    generics_cls = get_generics_cls(obj.__class__)
+def next_method(current_func, obj, *args, **kwargs):
+    func_name = current_func.generic_func.name
+    generics_cls = current_func.generics_cls
     return call_generic_func(super(generics_cls, generics_cls), func_name, obj, *args, **kwargs)
 

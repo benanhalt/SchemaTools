@@ -65,8 +65,8 @@ def record_to_sqlalchemy(record: base.RecordMeta, metadata, parent=None):
 
 @method(base_columns)
 def base_columns_for_tree_record(tree_record: base.TreeMeta):
-        cols = next_method(base_columns, tree_record)
-        cols.append( Column('path', postgresql.ARRAY(sqlalchemy.Text), nullable=False) )
+        cols = next_method(base_columns_for_tree_record, tree_record)
+        cols.append( Column('tree_structure', postgresql.HSTORE, nullable=False, server_default='') )
         return cols
 
 @generic
@@ -91,7 +91,7 @@ def link_to_sqlalchemy(link: fields.Link, *args, **kwargs):
     else:
         fk = '.'.join((link.record.schema.name, link.target, 'uuid'))
 
-    return next_method(to_sqlalchemy, link,
+    return next_method(link_to_sqlalchemy, link,
                        *(args +  (ForeignKey(fk, onupdate="CASCADE", deferrable=True), )),
                        **kwargs)
 

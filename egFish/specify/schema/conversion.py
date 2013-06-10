@@ -35,6 +35,10 @@ def source_table(table_name, order_by=None, parent_field=None, where=None):
         return record
     return decorator
 
+def skip(cls):
+    cls.skip = True
+    return cls
+
 class Tree(metaclass=base.TreeMeta):
     pass
 
@@ -84,6 +88,7 @@ def do_conversion(conversion_schema_family, output_metadata):
         print('Converting schema "%s".' % schema.__name__)
 
         for record in schema.records.values():
+            if hasattr(record, 'skip'): continue
             convert_record(record, connection)
 
     def convert_record(record, connection):
@@ -94,12 +99,15 @@ def do_conversion(conversion_schema_family, output_metadata):
         output_table = output_metadata.tables[record.output_record.full_name]
         connection.execute(output_table.insert(), data)
 
+        postprocess_record(record, output_metadata, connection)
+
         for child in record.children.values():
             convert_record(child, connection)
 
     with output_metadata.bind.begin() as connection:
         connection.execute('SET CONSTRAINTS ALL DEFERRED')
         for schema in conversion_schema_family.schemas.values():
+            if hasattr(schema, 'skip'): continue
             convert_schema(schema, connection)
 
 @generic
@@ -181,16 +189,19 @@ def get_processors_for_regular_record(record: base.RecordMeta):
 
     return processors
 
-@method(get_processors_for_record)
-def get_processors_for_tree(tree: base.TreeMeta):
-    processors = next_method(get_processors_for_record, tree)
-    processors.append( lambda row: ('path', []) )
-    return processors
+@generic
+def postprocess_record(record, output_metadata, connection):
+    pass
+
+@method(postprocess_record)
+def postprocess_regular_record(record: base.RecordMeta, *args):
+    pass
 
 def pk_processor(record):
     pk = get_primary_key_col(record.source_table)
-    table_uuid = uuid5(root_uuid, record.source_table.name)
-    return lambda row: ('uuid', uuid5(table_uuid, str(row[pk])))
+    table_uuid = gen_table_uuid(record.source_table)
+    print(table_uuid)
+    return lambda row: ('uuid', gen_row_uuid(table_uuid, row[pk]))
 
 def get_primary_key_col(table):
     return table.primary_key.columns.values()[0]
@@ -198,5 +209,12 @@ def get_primary_key_col(table):
 def parent_field_processor(record):
     parent_field = record.output_record.parent.name # TODO: this should make use of to_sqlalchemy
     fk_col = record.source_table.c[record.parent_field]
-    table_uuid = uuid5(root_uuid, record.parent.source_table.name)
-    return lambda row: (parent_field, uuid5(table_uuid, str(row[fk_col])))
+    table_uuid = gen_table_uuid(record.parent.source_table)
+    return lambda row: (parent_field, gen_row_uuid(table_uuid, row[fk_col]))
+
+def gen_table_uuid(table):
+    return uuid5(root_uuid, table.name)
+
+def gen_row_uuid(table_uuid, id):
+    if id is None: return None
+    return uuid5(table_uuid, str(id))

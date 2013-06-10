@@ -3,7 +3,7 @@ from collections import namedtuple
 from . import base, fields
 from .generics import generic, method, next_method
 from .utils import IgnoreException
-from .conversion import get_primary_key_col, reflect_table, uuid5, root_uuid
+from .conversion import get_primary_key_col, reflect_table, gen_table_uuid, gen_row_uuid
 
 
 
@@ -81,13 +81,13 @@ class ForeignKey(Column):
     def get_table_uuid(self):
         with IgnoreException(AttributeError):
             return self.table_uuid
-        self.table_uuid = uuid5(root_uuid, get_remote_table_from_fk(self.column).name)
+        self.table_uuid = gen_table_uuid(get_remote_table_from_fk(self.column))
         return self.table_uuid
 
     def process_row(self, row):
         output_col, value = super().process_row(row)
         if value is not None:
-            value = uuid5(self.get_table_uuid(), str(value))
+            value = gen_row_uuid(self.get_table_uuid(), value)
         return output_col, value
 
     def check_field_types(self):

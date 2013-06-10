@@ -1,5 +1,6 @@
-from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree
+from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree, skip
 from specify.schema.conversion_field_types import Enum, Column, ForeignKey, ReverseJoin
+from specify.schema.tree_conversion import Sp6Tree
 
 schema_family = SchemaFamily()
 Schema = schema_family.Schema
@@ -36,7 +37,7 @@ class KUFish(Schema):
             fax = Column("Fax")
 
     @source_table("taxon")
-    class Taxon(Tree):
+    class Taxon( Sp6Tree(treedef_table="taxontreedef", treedef_id=1) ):
         common_name = Column("CommonName")
         source = Column("Source")
         protected_status = Column("EnvironmentalProtectionStatus")

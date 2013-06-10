@@ -82,7 +82,7 @@ class KUFish(Schema):
             role = Column("Role")
 
     @source_table("geography")
-    class Geography(Tree):
+    class Geography( Sp6Tree(treedef_table="geographytreedef", treedef_id=1) ):
         accepted = ForeignKey("AcceptedID")
 
     @source_table("locality")

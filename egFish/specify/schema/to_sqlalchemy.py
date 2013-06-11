@@ -86,10 +86,7 @@ def link_type(obj: fields.Link):
 
 @method(to_sqlalchemy)
 def link_to_sqlalchemy(link: fields.Link, *args, **kwargs):
-    if base.is_record(link.target):
-        fk = '.'.join((link.target._meta.full_name, 'uuid'))
-    else:
-        fk = '.'.join((link.record._meta.schema._meta.name, link.target, 'uuid'))
+    fk = '.'.join((link.target._meta.full_name, 'uuid'))
 
     return call_next_method(link,
                             *(args +  (ForeignKey(fk, onupdate="CASCADE", deferrable=True), )),

@@ -35,7 +35,7 @@ def record_to_data(record: base.RecordMeta):
     data['type'] = "object"
     data['properties'] = OrderedDict( (field.__name__, to_data(field))
                                       for field in record._meta.fields.values()
-                                      if not isinstance(field, fields.Link))
+                                      if not isinstance(field, fields.Link) )
 
     links = [ to_data(link)
               for link in record._meta.fields.values()
@@ -92,6 +92,9 @@ def boolean_field_to_data(field: fields.Boolean):
 
 @method(to_data)
 def link_to_data(link: fields.Link):
+    target_schema = "#/%s/%s" % (link.target._meta.schema.__name__,
+                                 link.target.__name__)
     return OrderedDict((
         ('rel', link.__name__),
-        ('href', 'N/A')))
+        ('href', 'N/A'),
+        ('targetSchema', target_schema)))

@@ -4,7 +4,7 @@ from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.dialects import postgresql
 
 from . import base, fields
-from .generics import generic, method, next_method
+from .generics import generic, method, call_next_method
 from .utils import IgnoreException
 
 @generic
@@ -65,7 +65,7 @@ def record_to_sqlalchemy(record: base.RecordMeta, metadata):
 
 @method(base_columns)
 def base_columns_for_tree_record(tree_record: base.TreeMeta):
-        cols = next_method(base_columns_for_tree_record, tree_record)
+        cols = call_next_method(tree_record)
         cols.append( Column('tree_structure', postgresql.HSTORE, nullable=False, server_default='') )
         return cols
 
@@ -91,9 +91,9 @@ def link_to_sqlalchemy(link: fields.Link, *args, **kwargs):
     else:
         fk = '.'.join((link.record._meta.schema._meta.name, link.target, 'uuid'))
 
-    return next_method(link_to_sqlalchemy, link,
-                       *(args +  (ForeignKey(fk, onupdate="CASCADE", deferrable=True), )),
-                       **kwargs)
+    return call_next_method(link,
+                            *(args +  (ForeignKey(fk, onupdate="CASCADE", deferrable=True), )),
+                            **kwargs)
 
 @method(get_sqlalchemy_type)
 def text_type(field: fields.Text):

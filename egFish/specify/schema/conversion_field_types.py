@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 from . import base, fields
-from .generics import generic, method, next_method
+from .generics import generic, method
 from .utils import IgnoreException
 from .conversion import get_primary_key_col, reflect_table, gen_table_uuid, gen_row_uuid
 

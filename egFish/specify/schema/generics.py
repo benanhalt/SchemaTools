@@ -44,10 +44,17 @@ def method(generic_func):
         return meth
     return decorator
 
-def next_method(current_meth, obj, *args, **kwargs):
-    cls = get_class_from_annotation(current_meth)
+def call_next_method(obj, *args, **kwargs):
+    mro, generic_func = find_generic_func_in_stack()
     try:
-        return call_generic(cls.__mro__[1:], current_meth.generic_func, obj, *args, **kwargs)
+        return call_generic(mro[1:], generic_func, obj, *args, **kwargs)
     except NoMethodException as e:
         raise NoMethodException('No next method for generic function "%r" for object "%r".' % (
             func, obj)) from e
+
+def find_generic_func_in_stack():
+    for outer_frame in inspect.getouterframes(inspect.currentframe()):
+        frame = outer_frame[0]
+        if frame.f_code is call_generic.__code__:
+            return frame.f_locals['mro'], frame.f_locals['generic_func']
+    raise Exception("Couldn't locate 'call_generic' function in call stack.")

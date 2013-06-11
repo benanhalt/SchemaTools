@@ -1,6 +1,6 @@
 from . import base
 from .conversion import reflect_record, reflect_table, get_primary_key_col, gen_table_uuid, gen_row_uuid, postprocess_record
-from .generics import method, next_method
+from .generics import method, call_next_method
 
 from sqlalchemy import select, Table, Column, ForeignKey, Text, Integer
 from sqlalchemy.dialects import postgresql
@@ -20,7 +20,7 @@ def Sp6Tree(*, treedef_table, treedef_id):
 
 @method(reflect_record)
 def reflect_sp6tree(tree: Sp6TreeMeta, metadata):
-    next_method(reflect_sp6tree, tree, metadata)
+    call_next_method(tree, metadata)
     meta = tree.__class__
     meta.treedef_table = reflect_table(meta.treedef_table_name, metadata)
 
@@ -29,7 +29,7 @@ def reflect_sp6tree(tree: Sp6TreeMeta, metadata):
 
 @method(postprocess_record)
 def postprocess_sp6tree(tree: Sp6TreeMeta, output_metadata, connection):
-    next_method(postprocess_sp6tree, tree, output_metadata, connection)
+    call_next_method(tree, output_metadata, connection)
 
     meta = tree.__class__
     output_table = output_metadata.tables[tree.output_record._meta.full_name]

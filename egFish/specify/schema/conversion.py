@@ -4,7 +4,7 @@ from functools import partial, wraps
 from types import MethodType
 
 from . import base
-from .generics import generic, method, next_method
+from .generics import generic, method, call_next_method
 
 from sqlalchemy import Table, Column, Text, Integer, select, text
 from sqlalchemy.dialects.postgresql import UUID

@@ -2,7 +2,7 @@ from collections import OrderedDict
 import json
 
 from . import base, fields
-from .generics import generic, method, next_method
+from .generics import generic, method, call_next_method
 
 def to_json(schema_family):
     return json.dumps(to_data(schema_family), indent=4, separators=(',', ': '))
@@ -53,7 +53,7 @@ def record_to_data(record: base.RecordMeta):
 
 @method(to_data)
 def tree_record_to_data(tree: base.TreeMeta):
-    data = next_method(tree_record_to_data, tree)
+    data = call_next_method(tree)
     tree_structure = OrderedDict(((rank, {'type': 'string'})
                                   for rank in tree._ranks))
     data['properties']['tree_structure'] = OrderedDict((
@@ -67,26 +67,26 @@ def field_to_data(field: base.Field):
 
 @method(to_data)
 def text_field_to_data(field: fields.Text):
-    data = next_method(text_field_to_data, field)
+    data = call_next_method(field)
     data["type"] = "string"
     return data
 
 @method(to_data)
 def date_field_to_data(field: fields.Date):
-    data = next_method(date_field_to_data, field)
+    data = call_next_method(field)
     data["type"] = "string"
     data['format'] = "date-time"
     return data
 
 @method(to_data)
 def integer_field_to_data(field: fields.Integer):
-    data = next_method(integer_field_to_data, field)
+    data = call_next_method(field)
     data["type"] = "integer"
     return data
 
 @method(to_data)
 def boolean_field_to_data(field: fields.Boolean):
-    data = next_method(boolean_field_to_data, field)
+    data = call_next_method(field)
     data["type"] = "boolean"
     return data
 

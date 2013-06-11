@@ -116,3 +116,8 @@ def make_tree(ranks_for_tree):
             _ranks = ranks_for_tree
     return Tree
 
+def many(name):
+    def decorator(record):
+        record.collective_name = name
+        return record
+    return decorator

@@ -1,4 +1,4 @@
-from specify.schema.base import Record, SchemaFamily, make_tree
+from specify.schema.base import Record, SchemaFamily, make_tree, many
 from specify.schema.fields import Boolean, Text, Integer, Date, Link, required
 import formatters, vocabularies
 
@@ -18,6 +18,7 @@ class KUFish(Schema):
         email = Text()
         url = Text()
 
+        @many('addresses')
         class Address(Record):
             is_current = Boolean()
             address1 = Text()
@@ -49,6 +50,7 @@ class KUFish(Schema):
         url = Text()
         journal = Link("Journal")
 
+        @many('authors')
         class Author(Record):
             agent = Link("Agent", required)
 
@@ -66,6 +68,7 @@ class KUFish(Schema):
         number_of_specimens = Integer()
         description = Text()
 
+        @many('agents')
         class AccessionAgent(Record):
             agent = Link("Agent", required)
             role = Text()
@@ -92,6 +95,7 @@ class KUFish(Schema):
         locality = Link("Locality")
         trip = Link("CollectingTrip")
 
+        @many('collectors')
         class Collector(Record):
             agent = Link("Agent", required)
 
@@ -112,12 +116,14 @@ class KUFishVoucher(Schema):
         accession = Link(KUFish.Accession)
         collecting_event = Link(KUFish.CollectingEvent)
 
+        @many('determinations')
         class Determination(Record):
             determiner = Link(KUFish.Agent)
             determination_date = Date()
             type_status = Text()
             taxon = Link(KUFish.Taxon)
 
+        @many('preparations')
         class Preparation(Record):
             preparer = Link(KUFish.Agent)
             prep_date = Date()
@@ -139,12 +145,14 @@ class KUFishTissue(Schema):
         collecting_event = Link(KUFish.CollectingEvent)
         voucher = Link(KUFishVoucher.CollectionObject)
 
+        @many('determinations')
         class Determination(Record):
             determiner = Link(KUFish.Agent)
             determination_date = Date()
             type_status = Text()
             taxon = Link(KUFish.Taxon)
 
+        @many('preparations')
         class Preparation(Record):
             preparer = Link(KUFish.Agent)
             prep_date = Date()
@@ -155,6 +163,7 @@ class KUFishTissue(Schema):
             used_up = Boolean()
             storage = Text()
 
+        @many('dna_sequences')
         class DNASequence(Record):
             bold_barcode_id = Text()
             molecule_type = Text()

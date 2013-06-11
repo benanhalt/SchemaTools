@@ -32,15 +32,15 @@ def postprocess_sp6tree(tree: Sp6TreeMeta, output_metadata, connection):
     next_method(postprocess_sp6tree, tree, output_metadata, connection)
 
     meta = tree.__class__
-    output_table = output_metadata.tables[tree.output_record.full_name]
+    output_table = output_metadata.tables[tree.output_record._meta.full_name]
     treedefid_col = meta.treedefitem_table.c[get_primary_key_col(meta.treedef_table).name]
 
-    scratch_table = Table(tree.output_record.name + 'ConversionScratch', output_metadata,
+    scratch_table = Table(tree.output_record._meta.name + 'ConversionScratch', output_metadata,
         Column('id', postgresql.UUID, nullable=False),
         Column('p_id', postgresql.UUID, nullable=True),
         Column('name', Text, nullable=False),
         Column('rank', Text, nullable=False),
-        schema=tree.output_record.schema.name)
+        schema=tree.output_record._meta.schema._meta.name)
 
     scratch_table.drop(connection, checkfirst=True)
     scratch_table.create(connection)

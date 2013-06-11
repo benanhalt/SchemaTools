@@ -1,5 +1,5 @@
 import sys
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 from .orderedclass import OrderedMeta
 
@@ -27,63 +27,67 @@ class Field:
     def __str__(self):
         return self.__class__.__name__ + ': ' + self.record.__qualname__ + '.' + self.__name__
 
+class RecordMetaData:
+    def __init__(self, **kwargs):
+        for arg in "schema name parent fields children".split():
+            setattr(self, arg, kwargs.get(arg))
+
+    @property
+    def full_name(self):
+        return self.schema._meta.name + '.' + self.name
+
+    def set_schema(self, schema):
+        self.schema = schema
+        for child in self.children.values():
+            child._meta.set_schema(schema)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(%s)' % ', '.join(
+            "%s=%r" % (arg, getattr(self, arg))
+            for arg in "schema name parent fields children".split())
+
+
 class RecordMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
         record = super().__new__(meta, name, bases, clsdict)
         values = [getattr(record, key) for key in record._keys]
-        record.children = OrderedDict((r.__name__, r) for r in values if is_record(r))
-        for child in record.children.values():
-            child.parent = record
 
-        record.fields = OrderedDict()
+        children = OrderedDict((r.__name__, r) for r in values if is_record(r))
+
+        for child in children.values():
+            child._meta.parent = record
+
+        fields = OrderedDict()
         for name, field in ((k, v)
                             for k, v in zip(record._keys, values)
                             if is_field(v)):
             field.record = record
             field.__name__ = name
-            record.fields[name] = field
+            fields[name] = field
+
+        record._meta = RecordMetaData(schema=None, parent=None, # will be set by parent objects
+                                      name=record.__name__,
+                                      fields=fields,
+                                      children=children)
         return record
 
-    @property
-    def schema(record):
-        if hasattr(record, 'parent'):
-            return record.parent.schema
-        else:
-            return record._schema
-
-    @property
-    def name(record):
-        return record.__name__
-
-    @property
-    def full_name(record):
-        return record.schema.name + '.' + record.name
-
-    def all_descendants(record):
-        for child in record.children.values():
-            yield child
-            yield from child.all_descendants()
-
 class Record(metaclass=RecordMeta):
+    pass
+
+class SchemaMetaData(namedtuple("SchemaMetaData", "name records")):
     pass
 
 class SchemaMeta(OrderedMeta):
     def __new__(meta, name, bases, clsdict):
         schema = super().__new__(meta, name, bases, clsdict)
         values = [getattr(schema, key) for key in schema._keys]
-        schema.records = OrderedDict((r.__name__, r) for r in values if is_record(r))
-        for record in schema.records.values():
-            record._schema = schema
+
+        records = OrderedDict((r.__name__, r) for r in values if is_record(r))
+        for record in records.values():
+            record._meta.set_schema(schema)
+
+        schema._meta = SchemaMetaData(name=name, records=records)
         return schema
-
-    @property
-    def name(schema):
-        return schema.__name__
-
-    def all_records(schema):
-        for record in schema.records.values():
-            yield record
-            yield from record.all_descendants()
 
 class SchemaFamily:
     def __init__(self):
@@ -101,9 +105,6 @@ class SchemaFamily:
         self.schemas.pop('Schema')
         self.Schema = Schema
 
-    def all_records(self):
-        for schema in self.schemas.values():
-            yield from schema.all_records()
 
 class TreeMeta(RecordMeta):
     pass

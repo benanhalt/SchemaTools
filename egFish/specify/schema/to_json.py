@@ -24,7 +24,7 @@ def schema_family_to_data(family: base.SchemaFamily):
 def schema_to_data(schema: base.SchemaMeta):
     data = OrderedDict()
     data['title'] = schema.__name__
-    for record in schema.records.values():
+    for record in schema._meta.records.values():
         data[record.__name__] = to_data(record)
     return data
 
@@ -34,17 +34,17 @@ def record_to_data(record: base.RecordMeta):
     data['title'] = record.__name__
     data['type'] = "object"
     data['properties'] = OrderedDict( (field.__name__, to_data(field))
-                                      for field in record.fields.values()
+                                      for field in record._meta.fields.values()
                                       if not isinstance(field, fields.Link))
 
     links = [ to_data(link)
-              for link in record.fields.values()
+              for link in record._meta.fields.values()
               if isinstance(link, fields.Link) ]
 
     if len(links) > 0:
         data['links'] = links
 
-    for child in record.children.values():
+    for child in record._meta.children.values():
         prop_name = getattr(child, 'collective_name', child.__name__)
         data['properties'][prop_name] = OrderedDict((
             ('type', 'array'), ('items', to_data(child))))

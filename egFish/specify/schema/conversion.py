@@ -44,7 +44,7 @@ class Tree(metaclass=base.TreeMeta):
 
 def reflect_database(metadata, schema_family):
     for schema in schema_family.schemas.values():
-        for record in schema.records.values():
+        for record in schema._meta.records.values():
             reflect_record(record, metadata)
 @generic
 def reflect_record(record, metadata):
@@ -54,10 +54,10 @@ def reflect_record(record, metadata):
 def reflect_regular_record(record: base.RecordMeta, metadata):
     record.source_table = reflect_table(record.source_table_name, metadata)
 
-    for field in record.fields.values():
+    for field in record._meta.fields.values():
         field.check_against_table()
 
-    for child in record.children.values():
+    for child in record._meta.children.values():
         reflect_record(child, metadata)
 
 def reflect_table(table_name, metadata):
@@ -69,25 +69,25 @@ def join_schema_family_with_conversion(schema_family, conversion_schema_family):
                                     conversion_schema_family.schemas[name])
 
 def join_schema_with_conversion(schema, conversion_schema):
-    for record_name in conversion_schema.records:
-        join_record_with_conversion(schema.records[record_name],
-                                    conversion_schema.records[record_name])
+    for record_name in conversion_schema._meta.records:
+        join_record_with_conversion(schema._meta.records[record_name],
+                                    conversion_schema._meta.records[record_name])
 
 def join_record_with_conversion(record, conversion_record):
     conversion_record.output_record = record
-    for field in conversion_record.fields.values():
+    for field in conversion_record._meta.fields.values():
         field.set_output_field()
 
-    for child_name in conversion_record.children:
-        join_record_with_conversion(record.children[child_name],
-                                    conversion_record.children[child_name])
+    for child_name in conversion_record._meta.children:
+        join_record_with_conversion(record._meta.children[child_name],
+                                    conversion_record._meta.children[child_name])
 
 def do_conversion(conversion_schema_family, output_metadata):
 
     def convert_schema(schema, connection):
         print('Converting schema "%s".' % schema.__name__)
 
-        for record in schema.records.values():
+        for record in schema._meta.records.values():
             if hasattr(record, 'skip'): continue
             convert_record(record, connection)
 
@@ -96,12 +96,12 @@ def do_conversion(conversion_schema_family, output_metadata):
         data = get_data_for_record(record)
 
         print('Storing data...')
-        output_table = output_metadata.tables[record.output_record.full_name]
+        output_table = output_metadata.tables[record.output_record._meta.full_name]
         connection.execute(output_table.insert(), data)
 
         postprocess_record(record, output_metadata, connection)
 
-        for child in record.children.values():
+        for child in record._meta.children.values():
             convert_record(child, connection)
 
     with output_metadata.bind.begin() as connection:
@@ -127,7 +127,7 @@ def get_data_for_regular_record(record: base.RecordMeta):
         select_from = select_from.join(*join)
 
     outer_joins = {table: cond
-                   for field in record.fields.values()
+                   for field in record._meta.fields.values()
                    for table, cond in field.joins.items()}
 
     for table, cond in outer_joins.items():
@@ -151,11 +151,11 @@ def add_joins(record):
         if record.parent_field is None:
             break
 
-        joins.append( (record.parent.source_table,
+        joins.append( (record._meta.parent.source_table,
                        record.source_table.c[record.parent_field] == \
-                       get_primary_key_col(record.parent.source_table)) )
+                       get_primary_key_col(record._meta.parent.source_table)) )
 
-        record = record.parent
+        record = record._meta.parent
     return joins, wheres
 
 @generic
@@ -169,7 +169,7 @@ def get_processors_for_record(record):
 @method(get_input_columns_for_record)
 def get_input_columns_for_regular_record(record: base.RecordMeta):
     input_columns = { col
-                      for field in record.fields.values()
+                      for field in record._meta.fields.values()
                       for col in field.get_input_columns() }
 
     input_columns.add( get_primary_key_col(record.source_table) )
@@ -181,7 +181,7 @@ def get_input_columns_for_regular_record(record: base.RecordMeta):
 
 @method(get_processors_for_record)
 def get_processors_for_regular_record(record: base.RecordMeta):
-    processors = [ field.process_row for field in record.fields.values() ]
+    processors = [ field.process_row for field in record._meta.fields.values() ]
     processors.append( pk_processor(record) )
 
     if record.parent_field is not None:
@@ -207,9 +207,9 @@ def get_primary_key_col(table):
     return table.primary_key.columns.values()[0]
 
 def parent_field_processor(record):
-    parent_field = record.output_record.parent.name # TODO: this should make use of to_sqlalchemy
+    parent_field = record.output_record._meta.parent._meta.name # TODO: this should make use of to_sqlalchemy
     fk_col = record.source_table.c[record.parent_field]
-    table_uuid = gen_table_uuid(record.parent.source_table)
+    table_uuid = gen_table_uuid(record._meta.parent.source_table)
     return lambda row: (parent_field, gen_row_uuid(table_uuid, row[fk_col]))
 
 def gen_table_uuid(table):

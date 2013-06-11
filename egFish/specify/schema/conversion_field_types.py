@@ -47,7 +47,7 @@ class Column(base.Field):
         self.column = table.c[self.column_name]
 
     def set_output_field(self):
-        self.output_field = self.record.output_record.fields[self.__name__]
+        self.output_field = self.record.output_record._meta.fields[self.__name__]
         try:
             self.check_field_types()
         except AssertionError as e:

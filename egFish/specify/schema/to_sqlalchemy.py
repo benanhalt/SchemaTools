@@ -14,7 +14,7 @@ def to_sqlalchemy(obj, *args, **kwargs):
 @method(to_sqlalchemy)
 def schema_to_sqlalchemy(schema: base.SchemaMeta, metadata):
     return [result
-            for record in schema.records.values()
+            for record in schema._meta.records.values()
             for result in to_sqlalchemy(record, metadata)]
 
 
@@ -30,9 +30,9 @@ def create_schemas(engine, metadata, schema_family):
 
 def create_schema(schema, engine):
     with IgnoreException():
-        engine.execute( DropSchema(schema.name, cascade=True) )
+        engine.execute( DropSchema(schema._meta.name, cascade=True) )
 
-    engine.execute( CreateSchema(schema.name) )
+    engine.execute( CreateSchema(schema._meta.name) )
 
 @generic
 def base_columns(obj):
@@ -42,9 +42,9 @@ def base_columns(obj):
 def base_columns_for_record(record: base.RecordMeta):
     cols = [ Column('uuid', postgresql.UUID, primary_key=True) ]
 
-    if hasattr(record, 'parent'):
-        name = record.parent.name
-        fk = '.'.join((record.parent.schema.name, record.parent.name, 'uuid'))
+    if record._meta.parent is not None:
+        name = record._meta.parent._meta.name
+        fk = '.'.join((record._meta.parent._meta.full_name, 'uuid'))
         col = Column(name, None, ForeignKey(fk, onupdate="CASCADE", deferrable=True), nullable=False)
         cols.append(col)
     else:
@@ -54,14 +54,14 @@ def base_columns_for_record(record: base.RecordMeta):
     return cols
 
 @method(to_sqlalchemy)
-def record_to_sqlalchemy(record: base.RecordMeta, metadata, parent=None):
-    table_args = [record.name, metadata]
-    table_args.extend( to_sqlalchemy(field) for field in record.fields.values() )
+def record_to_sqlalchemy(record: base.RecordMeta, metadata):
+    table_args = [record._meta.name, metadata]
+    table_args.extend( to_sqlalchemy(field) for field in record._meta.fields.values() )
     table_args.extend( base_columns(record) )
 
-    yield Table(*table_args, schema=record.schema.name)
-    for child in record.children.values():
-        yield from to_sqlalchemy(child, metadata, record)
+    yield Table(*table_args, schema=record._meta.schema._meta.name)
+    for child in record._meta.children.values():
+        yield from to_sqlalchemy(child, metadata)
 
 @method(base_columns)
 def base_columns_for_tree_record(tree_record: base.TreeMeta):
@@ -87,9 +87,9 @@ def link_type(obj: fields.Link):
 @method(to_sqlalchemy)
 def link_to_sqlalchemy(link: fields.Link, *args, **kwargs):
     if base.is_record(link.target):
-        fk = '.'.join((link.target.schema.name, link.target.name, 'uuid'))
+        fk = '.'.join((link.target._meta.full_name, 'uuid'))
     else:
-        fk = '.'.join((link.record.schema.name, link.target, 'uuid'))
+        fk = '.'.join((link.record._meta.schema._meta.name, link.target, 'uuid'))
 
     return next_method(link_to_sqlalchemy, link,
                        *(args +  (ForeignKey(fk, onupdate="CASCADE", deferrable=True), )),

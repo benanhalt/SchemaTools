@@ -1,0 +1,4 @@
+PyMySQL3==0.5
+SQLAlchemy==0.8.1
+bottle==0.11.6
+py-postgresql==1.1.0

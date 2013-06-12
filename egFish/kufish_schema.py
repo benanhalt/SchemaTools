@@ -2,12 +2,13 @@ from specify.schema.base import Record, SchemaFamily, make_tree, many
 from specify.schema.fields import Boolean, Text, Integer, Date, Link, required
 import formatters, vocabularies
 
-schema_family = SchemaFamily()
+schema_family = SchemaFamily("KU Fish")
 Schema = schema_family.Schema
 
 class KUFish(Schema):
-
+    """All records shared by all objects in the collection."""
     class Agent(Record):
+        """A person, group or organization that objects in collection refer to."""
         agent_type = Text(required)
         title = Text()
         job_title = Text()
@@ -20,6 +21,7 @@ class KUFish(Schema):
 
         @many('addresses')
         class Address(Record):
+            """An agent's address."""
             is_current = Boolean()
             address1 = Text()
             address2 = Text()
@@ -33,6 +35,7 @@ class KUFish(Schema):
             fax = Text()
 
     class Taxon( make_tree("kingdom phylum class order family genus species subspecies") ):
+        """A node in a hierarchical taxonomy to be used in determinations."""
         common_name = Text()
         source = Text()
         protected_status = Text()

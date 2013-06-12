@@ -90,7 +90,8 @@ class SchemaMeta(OrderedMeta):
         return schema
 
 class SchemaFamily:
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.schemas = OrderedDict()
 
         class Meta(SchemaMeta):

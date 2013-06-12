@@ -2,7 +2,7 @@ from specify.schema.conversion import  Record, SchemaFamily, source_table, Tree,
 from specify.schema.conversion_field_types import Enum, Column, ForeignKey, ReverseJoin
 from specify.schema.tree_conversion import Sp6Tree
 
-schema_family = SchemaFamily()
+schema_family = SchemaFamily("KU Fish Specify6 Conversion")
 Schema = schema_family.Schema
 
 def to_int(value):

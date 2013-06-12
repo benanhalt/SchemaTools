@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import json
+import inspect
 
 from . import base, fields
 from .generics import generic, method, call_next_method
@@ -14,6 +15,7 @@ def to_data(obj, *args, **kwargs):
 @method(to_data)
 def schema_family_to_data(family: base.SchemaFamily):
     data = OrderedDict()
+    data['title'] = family.name
     data['$schema'] = "http://json-schema.org/draft-04/schema#"
     for schema in family.schemas.values():
         data[schema.__name__] = to_data(schema)
@@ -24,6 +26,7 @@ def schema_family_to_data(family: base.SchemaFamily):
 def schema_to_data(schema: base.SchemaMeta):
     data = OrderedDict()
     data['title'] = schema.__name__
+    data['description'] = inspect.getdoc(schema)
     for record in schema._meta.records.values():
         data[record.__name__] = to_data(record)
     return data
@@ -34,10 +37,9 @@ def record_to_data(record: base.RecordMeta):
     data['title'] = record.__name__
     data['type'] = "object"
     data['properties'] = OrderedDict( (field.__name__, to_data(field))
-                                      for field in record._meta.fields.values()
-                                      if not isinstance(field, fields.Link) )
+                                      for field in record._meta.fields.values() )
 
-    links = [ to_data(link)
+    links = [ to_link_description(link)
               for link in record._meta.fields.values()
               if isinstance(link, fields.Link) ]
 
@@ -92,9 +94,19 @@ def boolean_field_to_data(field: fields.Boolean):
 
 @method(to_data)
 def link_to_data(link: fields.Link):
+    data = call_next_method(link)
+    data["type"] = "string"
+    data["format"] = "uuid"
+    return data
+
+def to_link_description(link):
     target_schema = "#/%s/%s" % (link.target._meta.schema.__name__,
                                  link.target.__name__)
+
+    href = "/%s/%s/{%s}/" % (link.target._meta.schema.__name__,
+                             link.target.__name__,
+                             link.__name__)
     return OrderedDict((
         ('rel', link.__name__),
-        ('href', 'N/A'),
+        ('href', href),
         ('targetSchema', target_schema)))
